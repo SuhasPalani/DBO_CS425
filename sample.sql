@@ -66,7 +66,6 @@ create table
 select
     'LOADING DATA...' AS '';
 
--- Insert into Customer
 insert into
     customer (cust_id, first_name, last_name, email, phone_number, address, user_name, password)
 values
@@ -99,9 +98,16 @@ values
     (5, 'Hannah', 'Love', 'meredithmorton@example.org', '2017817291', 'williscolton', '(Y5WUlVNw'),
     (6, 'Kathryn', 'Greer', 'qballard@example.net', '9756493349', 'kparks', '+0NSh1BN2%lj'),
     (7, 'Elizabeth', 'Norris', 'hcortez@example.net', '9245557252', 'jordanbailey', 'B27VbX$mM@1'),
-    (8, 'Hunter', 'Fleming', 'kstrong@example.org', '3878611793', 'stephaniejones', 'XEvVMtB08!4');
+    (8, 'Hunter', 'Fleming', 'kstrong@example.org', '3878611793', 'stephaniejones', 'XEvVMtB08!4'),
+    (9, 'Bradley', 'West', 'michelle01@example.com', '3319511036', 'carolyn10', '+Q9M%gvW*'),
+    (10, 'Thomas', 'Thompson', 'lwheeler@example.org', '8757182169', 'julian89', '^C+GLmV9f3@'),
+    (11, 'Thomas', 'Townsend', 'ichandler@example.com', '665673770', 'rogerstamara', '@DCg0HyJ'),
+    (12, 'Jessica', 'Kelley', 'yolandabruce@example.com', '3236748727', 'arthur82', 'VX6N(RiuH%'),
+    (13, 'Tim', 'Weber', 'mario12@example.org', '6867536400', 'jasonking', '$P1U3JRkYt8'),
+    (14, 'Mary', 'Wilcox', 'johnsonfrederick@example.org', '7618415738', 'gilbertjones', '&rUa^V6l9'),
+    (15, 'Carol', 'Smith', 'pamglass@example.com', '714363261', 'juanfarmer', 'o5BRKIzC&'),
+    (16, 'Stephanie', 'James', 'katherinecook@example.net', '8832830812', 'lisaturner', '!4T4jJpUFd');
 
--- customer, employee, parking_lot, parking_spot, reservation, vehicle, parking_log, payment-- 
 INSERT INTO
     parking_lot (lot_id, lot_name, location, total_spots, available_spots, emp_id)
 values
@@ -259,4 +265,81 @@ values
     (500, 1513, 106, 'credit', 35, 'failed'),
     (501, 1518, 112, 'debit', 25, 'successful'),
     (502, 1508, 110, 'wallet', 30, 'successful'),
-    (503, 1501, 105, 'google pay', 20, 'failed');
+    (503, 1501, 105, 'google pay', 20, 'failed'),
+    (504, 1524, 116, 'wallet', 25, 'successful'),
+    (505, 1504, 104, 'debit', 55, 'successful'),
+    (506, 1506, 112, 'google pay', 30, 'successful'),
+    (507, 1502, 102, 'wallet', 55, 'successful'),
+    (508, 1522, 109, 'credit', 20, 'failed'),
+    (509, 1526, 107, 'debit', 60, 'failed'),
+    (510, 1518, 104, 'debit', 25, 'successful'),
+    (511, 1501, 105, 'google pay', 30, 'successful'),
+    (512, 1517, 118, 'debit', 45, 'successful'),
+    (513, 1513, 101, 'credit', 60, 'failed'),
+    (514, 1516, 102, 'credit', 55, 'successful'),
+    (515, 1515, 113, 'wallet', 60, 'failed'),
+    (516, 1509, 101, 'debit', 50, 'successful'),
+    (517, 1504, 106, 'credit', 25, 'successful'),
+    (518, 1513, 103, 'debit', 60, 'failed'),
+    (519, 1529, 103, 'wallet', 60, 'failed'),
+    (520, 1528, 107, 'debit', 30, 'failed'),
+    (521, 1510, 112, 'debit', 35, 'successful'),
+    (522, 1526, 104, 'credit', 45, 'successful'),
+    (523, 1529, 102, 'google pay', 80, 'successful'),
+    (524, 1503, 106, 'credit', 60, 'failed');
+
+select
+    'CREATING INDICES...' AS '';
+
+create index vehicle_idx1 on vehicle (plate_number);
+
+create index log_idx1 on parking_log (log_id, vehicle_id, spot_id);
+
+create index cust_idx1 on customer (first_name);
+
+select
+    'CREATING VIEWS...' AS '';
+
+create view
+    parking_log_view as
+select
+    lg.*,
+    cust.cust_id as cust_id,
+    cust.first_name as cust_fname,
+    pl.lot_name
+from
+    parking_log lg
+    left join vehicle v on lg.vehicle_id = v.vehicle_id
+    left join customer cust on cust.cust_id = v.cust_id
+    left join parking_spot ps on ps.spot_id = lg.spot_id
+    left join parking_lot pl on pl.lot_id = ps.lot_id;
+
+create view
+    reservation_confirmed as
+select
+    r.*,
+    c.first_name as cust_fname
+from
+    reservation r
+    left join customer c on c.cust_id = r.cust_id
+where
+    r.status = 'confirmed';
+
+select
+    'CREATING TEMP TABLES...' AS '';
+
+create temporary table temp_parking_duration (log_id int, spot_id int, avg_duration int);
+
+INSERT INTO
+    temp_parking_duration (log_id, spot_id, avg_duration)
+SELECT
+    log_id,
+    spot_id,
+    checkout_time - checkin_time
+FROM
+    parking_log;
+
+drop temporary table temp_parking_duration;
+
+select
+    'CREATING FUNCTIONS...' AS '';
