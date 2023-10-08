@@ -8,7 +8,7 @@ customer_data = []
 
 # Generate 20 customer records
 for _ in range(8):
-    emp_id = _ + 1  # Primary key, incrementing by 1 for each record
+    emp_id = _ + 9  # Primary key, incrementing by 1 for each record
     first_name = fake.first_name()
     last_name = fake.last_name()
     email = fake.email()
