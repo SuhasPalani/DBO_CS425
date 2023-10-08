@@ -12,11 +12,11 @@ create table
 
 -- Creating table ParkingLot
 create table
-    parking_lot (lot_id int, lot_name varchar(20), location varchar(50), total_spots int, available_spots int, emp_id int, primary key (lot_id), foreign key (emp_id) references employee (emp_id));
+    parking_lot (lot_id int, lot_name varchar(20), location varchar(50), total_spots int, available_spots int, emp_id int, primary key (lot_id), foreign key (emp_id) references employee (emp_id) on delete cascade );
 
 -- Creating table parkingSpot
 create table
-    parking_spot (spot_id int, lot_id int, spot_type varchar(20), status varchar(50), primary key (spot_id), foreign key (lot_id) references parking_lot (lot_id));
+    parking_spot (spot_id int, lot_id int, spot_type varchar(20), status varchar(50), primary key (spot_id), foreign key (lot_id) references parking_lot (lot_id) on delete cascade);
 
 create table
     customer (cust_id int, first_name varchar(20), last_name varchar(20), email varchar(50), phone_number varchar(50), address varchar(50), user_name varchar(20), password varchar(20), primary key (cust_id));
@@ -29,12 +29,12 @@ create table
         expire_time timestamp,
         status varchar(20),
         primary key (res_id),
-        foreign key (cust_id) references customer (cust_id),
-        foreign key (spot_id) references parking_spot (spot_id)
+        foreign key (cust_id) references customer (cust_id) on delete cascade,
+        foreign key (spot_id) references parking_spot (spot_id) on delete cascade
     );
 
 create table
-    vehicle (vehicle_id int, cust_id int, plate_number varchar(20), vehicle_type varchar(20), primary key (vehicle_id), foreign key (cust_id) references customer (cust_id));
+    vehicle (vehicle_id int, cust_id int, plate_number varchar(20), vehicle_type varchar(20), primary key (vehicle_id), foreign key (cust_id) references customer (cust_id) on delete cascade);
 
 create table
     parking_log (
@@ -45,8 +45,8 @@ create table
         checkout_time timestamp,
         res_id int,
         primary key (log_id),
-        foreign key (vehicle_id) references vehicle (vehicle_id),
-        foreign key (spot_id) references parking_spot (spot_id)
+        foreign key (vehicle_id) references vehicle (vehicle_id) on delete cascade,
+        foreign key (spot_id) references parking_spot (spot_id) on delete cascade
     );
 
 create table
@@ -58,8 +58,8 @@ create table
         pmt_amt decimal(10, 2),
         pmt_status varchar(20),
         primary key (pmt_id),
-        foreign key (log_id) references parking_log (log_id),
-        foreign key (cust_id) references customer (cust_id)
+        foreign key (log_id) references parking_log (log_id) on delete cascade,
+        foreign key (cust_id) references customer (cust_id) on delete cascade
     );
 
 -- customer, employee, parking_lot, parking_spot, reservation, vehicle, parking_log, payment-- 
@@ -289,6 +289,27 @@ values
     (524, 1503, 106, 'credit', 60, 'failed');
 
 select
+    'CRUD OPERATIONS...' AS '';
+
+select * from payment where pmt_id=524;
+update payment set pmt_status='successful' where pmt_id=524;
+select * from payment where pmt_id=524;
+select * from parking_spot where spot_id=200;
+update parking_spot set status='available' where spot_id=200;
+select * from parking_spot where spot_id=200;
+
+select * from parking_lot limit 3;
+select r.*, c.first_name as cust_fname, c.phone_number from reservation r inner join customer c on r.cust_id=c.cust_id limit 3;
+
+select * from parking_lot where lot_id=1001;
+delete from parking_lot where lot_id=1001;
+select * from parking_lot where lot_id=1001;
+
+select count(*) from vehicle where vehicle_type='motorcycle';
+delete from vehicle where vehicle_type='motorcycle';
+select count(*) from vehicle where vehicle_type='motorcycle';
+
+select
     'CREATING INDICES...' AS '';
 
 create index vehicle_idx1 on vehicle (plate_number);
@@ -359,7 +380,7 @@ begin
 end; //
 delimiter ;
 
-select get_hour_minues(checkout_time-checkin_time) as parking_duration from parking_log;
+select vehicle_id, get_hour_minues(checkout_time-checkin_time) as parking_duration from parking_log;
 
 
 delimiter //
@@ -371,7 +392,7 @@ begin
 end; //
 delimiter ;
 
-select calc_fill_percent(total_spots, available_spots) as fill_percent from parking_lot;
+select lot_id, lot_name, calc_fill_percent(total_spots, available_spots) as fill_percent from parking_lot;
 
 select
     'CREATING PROCEDURES...' AS '';
