@@ -111,21 +111,21 @@ values
 INSERT INTO
     parking_lot (lot_id, lot_name, location, total_spots, available_spots, emp_id)
 values
-    (1000, 'Edward Fernandez', '726 Peterson Wells', 1, 29, 4),
+    (1000, 'Edward Fernandez', '726 Peterson Wells', 100, 29, 4),
     (1001, 'Tina Hall', '5433 Elizabeth Club', 29, 1, 7),
     (1002, 'Brian Osborne', '799 David Ford Apt. 010', 18, 12, 8),
     (1003, 'Michael Acevedo', '303 Robert Burgs Suite 903', 25, 5, 8),
-    (1004, 'Christina Graham', '425 Kim Vista', 11, 19, 4),
+    (1004, 'Christina Graham', '425 Kim Vista', 110, 19, 4),
     (1005, 'Carolyn Perry', '618 Roy Hill Suite 294', 23, 7, 1),
-    (1006, 'Perry Collier', '431 Davis Club', 10, 20, 2),
+    (1006, 'Perry Collier', '431 Davis Club', 100, 20, 2),
     (1007, 'Oscar Sanders', '0333 Kennedy Street', 27, 3, 6),
     (1008, 'Brian Hamilton', '06886 Samantha Neck Apt. 612', 15, 15, 2),
-    (1009, 'Rhonda Hill', '26283 Ashley River Suite 036', 13, 17, 3),
+    (1009, 'Rhonda Hill', '26283 Ashley River Suite 036', 130, 17, 3),
     (1010, 'Mark Simmons', '39621 Karla Forest', 15, 15, 2),
     (1011, 'Derek Davis DVM', '4276 Lauren Prairie Apt. 848', 26, 4, 5),
-    (1012, 'Kristina Mcdowell', '216 Dorsey Cove', 6, 24, 3),
-    (1013, 'Natasha Merritt', '2704 Hahn Islands', 7, 23, 4),
-    (1014, 'Adam Moore', '085 Adams Park Suite 021', 13, 17, 4),
+    (1012, 'Kristina Mcdowell', '216 Dorsey Cove', 60, 24, 3),
+    (1013, 'Natasha Merritt', '2704 Hahn Islands', 70, 23, 4),
+    (1014, 'Adam Moore', '085 Adams Park Suite 021', 130, 17, 4),
     (1015, 'Ashley Cardenas', '477 Gomez Shoal Suite 716', 25, 5, 6);
 
 insert into
@@ -343,3 +343,110 @@ drop temporary table temp_parking_duration;
 
 select
     'CREATING FUNCTIONS...' AS '';
+
+delimiter //
+create function get_hour_minues (seconds int)
+returns varchar(30)
+deterministic
+begin
+    declare result varchar(30);
+    if seconds >= 3600 then
+        set result = TIME_FORMAT(SEC_TO_TIME(seconds), '%kh %lm');
+    else
+        set result = TIME_FORMAT(SEC_TO_TIME(seconds), '%lm');
+    end if;
+    return result;
+end; //
+delimiter ;
+
+select get_hour_minues(checkout_time-checkin_time) as parking_duration from parking_log;
+
+
+delimiter //
+create function calc_fill_percent (total_spots int, available_spots int)
+returns double
+deterministic
+begin
+    return round((total_spots-available_spots)/total_spots*100,2);
+end; //
+delimiter ;
+
+select calc_fill_percent(total_spots, available_spots) as fill_percent from parking_lot;
+
+select
+    'CREATING PROCEDURES...' AS '';
+
+delimiter //
+create procedure payment_success_task (log int)
+begin
+    declare spot, lot int;
+    select spot_id into spot from parking_log where log_id = log;
+    select lot_id into lot from parking_spot where spot_id = spot;
+    update parking_spot
+        set status = 'available'
+        where spot_id = spot;
+    update parking_lot
+        set available_spots =  available_spots+1
+        where lot_id = lot;
+end; //
+delimiter ;
+
+delimiter //
+create procedure parked_task (log int)
+begin
+    declare spot, lot int;
+    select spot_id into spot from parking_log where log_id = log;
+    select lot_id into lot from parking_spot where spot_id = spot;
+    update parking_spot
+        set status = 'occupied'
+        where spot_id = spot;
+    update parking_lot
+        set available_spots =  available_spots-1
+        where lot_id = lot;
+end; //
+delimiter ;
+
+select s.status as spot_status, t.available_spots from parking_log l join parking_spot s on l.spot_id = s.spot_id and l.log_id=1500 join parking_lot t on t.lot_id = s.lot_id;
+call parked_task(1500);
+select s.status as spot_status, t.available_spots from parking_log l join parking_spot s on l.spot_id = s.spot_id and l.log_id=1500 join parking_lot t on t.lot_id = s.lot_id;
+
+select
+    'CREATING TRIGGERS...' AS '';
+
+delimiter //
+CREATE TRIGGER parking_lot_const before update
+ON parking_lot
+FOR EACH ROW
+IF new.available_spots > new.total_spots THEN
+SIGNAL SQLSTATE '50002' SET MESSAGE_TEXT = 'Available spots can`t exceed total spots';
+END IF; //
+delimiter ;
+
+update parking_lot 
+    set available_spots=200
+    where lot_id=1000;
+
+delimiter //
+CREATE TRIGGER trigger_parked_task after insert
+ON parking_log
+FOR EACH ROW
+begin
+    declare lot int;
+    select lot_id into lot from parking_spot where spot_id = new.spot_id;
+    update parking_spot
+        set status = 'occupied'
+        where spot_id = new.spot_id;
+    update parking_lot
+        set available_spots =  available_spots-1
+        where lot_id = lot;
+end; //
+delimiter ;
+
+
+select s.status as spot_status, t.available_spots from parking_spot s join parking_lot t on t.lot_id = s.lot_id and s.spot_id=202;
+insert into
+    parking_log (log_id, vehicle_id, spot_id, checkin_time, checkout_time, res_id)
+values
+    (1530, 2, 202, '2023-12-21 04:42:17', '2023-12-21 06:14:17', null);
+
+select s.status as spot_status, t.available_spots from parking_spot s join parking_lot t on t.lot_id = s.lot_id and s.spot_id=202;
